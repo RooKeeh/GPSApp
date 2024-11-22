@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -11,53 +10,81 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|start"
-        android:background="@android:color/transparent"
-        android:gravity="left"
-        android:orientation="horizontal"
-        android:padding="8dp">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/goToLosAngelesButton"
-            style="@style/Theme.MyMaterialButtonStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_marginStart="2dp"
-            android:layout_marginEnd="8dp"
-            android:layout_marginBottom="24dp"
-            android:text="Los Angeles"
-            app:cornerRadius="12dp"
-            app:icon="@drawable/ic_location_on"
-            app:iconGravity="textStart"
-            app:iconPadding="8dp" />
-
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/goToClujButton"
-            style="@style/Theme.MyMaterialButtonStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_marginStart="8dp"
-            android:layout_marginBottom="24dp"
-            android:text="Cluj-Napoca"
-            app:cornerRadius="12dp"
-            app:icon="@drawable/ic_location_on"
-            app:iconGravity="textStart"
-            app:iconPadding="8dp" />
-    </LinearLayout>
-
     <TextView
         android:id="@+id/locationDetailsTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Location Details"
-        android:textSize="16sp"
-        android:padding="16dp"
-        android:layout_alignParentBottom="true"
+        android:layout_gravity="top"
         android:background="#AA000000"
-        android:textColor="#FFFFFF"/>
+        android:padding="16dp"
+        android:text="Location Details"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/toggleModeButton"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginBottom="8dp"
+            android:backgroundTint="#000000"
+            android:text="SWITCH TO DISTANCE MODE"
+            android:textAllCaps="true"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:cornerRadius="12dp"
+            app:icon="@drawable/ic_toggle"
+            app:iconGravity="textStart"
+            app:iconPadding="8dp" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/goToLosAngelesButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginEnd="4dp"
+                android:backgroundTint="#000000"
+                android:text="LOS ANGELES"
+                android:textAllCaps="true"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                app:cornerRadius="8dp"
+                app:icon="@drawable/ic_location_on"
+                app:iconGravity="textStart"
+                app:iconPadding="4dp"
+                app:iconSize="16dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/goToClujButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="4dp"
+                android:backgroundTint="#000000"
+                android:text="CLUJ-NAPOCA"
+                android:textAllCaps="true"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                app:cornerRadius="8dp"
+                app:icon="@drawable/ic_location_on"
+                app:iconGravity="textStart"
+                app:iconPadding="4dp"
+                app:iconSize="16dp" />
+        </LinearLayout>
+    </LinearLayout>
 
 </FrameLayout>

@@ -1,33 +1,36 @@
 package fsega.eb.gpsapp
 
-import android.os.Bundle
 import android.Manifest
 import android.content.pm.PackageManager
+import android.location.Geocoder
 import android.location.Location
+import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
-import android.location.Geocoder
+import com.google.android.gms.maps.model.*
 import java.io.IOException
 
 private lateinit var fusedLocationClient: FusedLocationProviderClient
-private var currentLocation: Location? = null
 private lateinit var mMap: GoogleMap
+private lateinit var toggleModeButton: Button
 private lateinit var goToLosAngelesButton: Button
 private lateinit var goToClujButton: Button
 private lateinit var locationDetailsTextView: TextView
 
-class MainActivity : AppCompatActivity(), OnMapReadyCallback {
+private var firstPoint: LatLng? = null
+private var secondPoint: LatLng? = null
+private var isDistanceMode: Boolean = false
+
+class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMapClickListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,16 +38,25 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
+        toggleModeButton = findViewById(R.id.toggleModeButton)
         goToLosAngelesButton = findViewById(R.id.goToLosAngelesButton)
         goToClujButton = findViewById(R.id.goToClujButton)
         locationDetailsTextView = findViewById(R.id.locationDetailsTextView)
 
+        toggleModeButton.setOnClickListener {
+            isDistanceMode = !isDistanceMode
+            val modeText =
+                if (isDistanceMode) "Switch to Details Mode" else "Switch to Distance Mode"
+            toggleModeButton.text = modeText
+            resetMapAndPoints()
+        }
+
         goToLosAngelesButton.setOnClickListener {
-            changeCameraPositionToLosAngeles()
+            navigateToLocation(LatLng(37.4221, -122.0853), "Los Angeles")
         }
 
         goToClujButton.setOnClickListener {
-            changeCameraPositionToCluj()
+            navigateToLocation(LatLng(46.7732, 23.6214), "Cluj-Napoca")
         }
 
         val mapFragment = supportFragmentManager
@@ -54,18 +66,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
-        mMap.mapType = GoogleMap.MAP_TYPE_HYBRID
+        mMap.mapType = GoogleMap.MAP_TYPE_NORMAL
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             == PackageManager.PERMISSION_GRANTED
         ) {
             mMap.isMyLocationEnabled = true
             mMap.uiSettings.isZoomControlsEnabled = true
-            addSampleMarkers()
-            getUserLocationAndUpdate()
-
-            // Show Cluj-Napoca as the default camera position
-            showClujNapoca()
+            mMap.setOnMapClickListener(this)
+            addPresetMarkers()
         } else {
             ActivityCompat.requestPermissions(
                 this,
@@ -75,86 +84,112 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-    private fun addSampleMarkers() {
-        val losAngeles = LatLng(34.0549, -118.2426)
-        mMap.addMarker(MarkerOptions().position(losAngeles).title("Los Angeles"))
-        val clujNapoca = LatLng(46.7712, 23.6236)
-        mMap.addMarker(MarkerOptions().position(clujNapoca).title("Cluj-Napoca"))
-    }
-
-    private fun showClujNapoca() {
-        val clujNapoca = LatLng(46.7712, 23.6236) // Coordinates for Cluj-Napoca
-        mMap.moveCamera(
-            CameraUpdateFactory.newLatLngZoom(
-                clujNapoca,
-                11.5f
-            )
-        ) // Default zoom level for Cluj
-    }
-
-    private fun changeCameraPositionToLosAngeles() {
-        val losAngeles = LatLng(34.0549, -118.2426)
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(losAngeles, 10f), 2500, null)
-    }
-
-    private fun changeCameraPositionToCluj() {
-        val clujNapoca = LatLng(46.7712, 23.6236)
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(clujNapoca, 11.5f), 2500, null)
-    }
-
-    private fun getUserLocationAndUpdate() {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-        fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
-            if (location != null) {
-                currentLocation = location
-                updateLocationDetails(location)
-            }
+    override fun onMapClick(latLng: LatLng) {
+        if (isDistanceMode) {
+            handleDistanceMode(latLng)
+        } else {
+            handleDetailsMode(latLng)
         }
     }
 
-    private fun updateLocationDetails(location: Location) {
-        val latitude = location.latitude
-        val longitude = location.longitude
+    private fun navigateToLocation(latLng: LatLng, locationName: String) {
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12f))
+        mMap.addMarker(MarkerOptions().position(latLng).title(locationName))
+        locationDetailsTextView.text = "Navigated to $locationName"
+    }
 
-        val clujNapocaLocation = Location("Cluj-Napoca")
-        clujNapocaLocation.latitude = 46.7712
-        clujNapocaLocation.longitude = 23.6236
-        val distance = location.distanceTo(clujNapocaLocation) / 1000 // Distance in km
+    private fun handleDetailsMode(latLng: LatLng) {
+        mMap.clear()
+        addPresetMarkers()
+        mMap.addMarker(MarkerOptions().position(latLng).title("Waypoint"))
 
+        val latitude = latLng.latitude
+        val longitude = latLng.longitude
         val geocoder = Geocoder(this)
+
         try {
             val addressList = geocoder.getFromLocation(latitude, longitude, 1)
-            if (addressList != null) {
-                if (addressList.isNotEmpty()) {
-                    val address = addressList?.get(0)
-                    val fullAddress = address?.getAddressLine(0)
-                    val city = address?.locality
-                    val postalCode = address?.postalCode
-                    val country = address?.countryName
+            val address =
+                if (addressList?.isNotEmpty() == true) addressList[0].getAddressLine(0) else "Unknown location"
 
-                    locationDetailsTextView.text = """
-                            Latitude: $latitude
-                            Longitude: $longitude
-                            Distance to Cluj-Napoca: $distance km
-                            Address: $fullAddress
-                            City: $city
-                            Postal Code: $postalCode
-                            Country: $country
-                        """.trimIndent()
-                }
-            }
+            locationDetailsTextView.text = """
+            Latitude: $latitude
+            Longitude: $longitude
+            Address: $address
+        """.trimIndent()
+
         } catch (e: IOException) {
             e.printStackTrace()
+            locationDetailsTextView.text = """
+            Latitude: $latitude
+            Longitude: $longitude
+            Address: Not available
+        """.trimIndent()
         }
+    }
+
+    private fun handleDistanceMode(latLng: LatLng) {
+        if (firstPoint != null && secondPoint != null) {
+            resetMapAndPoints()
+        }
+
+        mMap.addMarker(MarkerOptions().position(latLng).title("Waypoint"))
+
+        if (firstPoint == null) {
+            firstPoint = latLng
+            locationDetailsTextView.text =
+                "First point selected:\nLatitude: ${latLng.latitude}, Longitude: ${latLng.longitude}"
+        } else {
+            secondPoint = latLng
+            calculateAndDisplayDistance(firstPoint!!, secondPoint!!)
+            drawLineBetweenPoints(firstPoint!!, secondPoint!!)
+        }
+    }
+
+    private fun calculateAndDisplayDistance(point1: LatLng, point2: LatLng) {
+        val location1 = Location("Point 1").apply {
+            latitude = point1.latitude
+            longitude = point1.longitude
+        }
+
+        val location2 = Location("Point 2").apply {
+            latitude = point2.latitude
+            longitude = point2.longitude
+        }
+
+        val distance = location1.distanceTo(location2) / 1000
+
+        locationDetailsTextView.text = """
+            First Point: Latitude ${point1.latitude}, Longitude ${point1.longitude}
+            Second Point: Latitude ${point2.latitude}, Longitude ${point2.longitude}
+            Distance: ${"%.2f".format(distance)} km
+        """.trimIndent()
+    }
+
+    private fun drawLineBetweenPoints(point1: LatLng, point2: LatLng) {
+        val polylineOptions = PolylineOptions()
+            .add(point1)
+            .add(point2)
+            .color(ContextCompat.getColor(this, R.color.teal_700))
+            .width(5f)
+        mMap.addPolyline(polylineOptions)
+    }
+
+    private fun resetMapAndPoints() {
+        firstPoint = null
+        secondPoint = null
+        mMap.clear()
+        addPresetMarkers()
+        locationDetailsTextView.text = if (isDistanceMode) {
+            "Tap two points to calculate the distance."
+        } else {
+            "Tap a point to get location details."
+        }
+    }
+
+    private fun addPresetMarkers() {
+        mMap.addMarker(MarkerOptions().position(LatLng(37.4221, -122.0853)).title("Los Angeles"))
+        mMap.addMarker(MarkerOptions().position(LatLng(46.7732, 23.6214)).title("Cluj-Napoca"))
     }
 
     companion object {
@@ -171,12 +206,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
                 if (ContextCompat.checkSelfPermission(
                         this,
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                    )
-                    == PackageManager.PERMISSION_GRANTED
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                    ) == PackageManager.PERMISSION_GRANTED
                 ) {
                     mMap.isMyLocationEnabled = true
-                    getUserLocationAndUpdate()
                 }
             }
         }

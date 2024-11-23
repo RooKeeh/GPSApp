@@ -65,4 +65,5 @@ dependencies {
     implementation(libs.play.services.maps)
     implementation(libs.material.vversion)
     implementation(libs.material)
+    implementation(libs.okhttp)
 }
